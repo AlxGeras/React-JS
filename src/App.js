@@ -8,20 +8,15 @@ import { element } from 'prop-types';
 
 function App(props) {
 
-  const [messageList, setAuthor] = useState([],);
+  const [messageList, setMessageList] = useState([],);
   const [valueAuthor, setAuthorValue] = useState('');
   const [valueText, setTextValue] = useState('');
-  const inputAuthor = useRef();
-  const inputText = useRef();
 
   useEffect(() => {
-    const lastAuthor = inputAuthor.current.value;
-    setAuthorValue('');
-    setTextValue('');
-    setTimeout( () => {
-      console.log(1);
-      if (messageList.length !==0 && messageList[messageList.length-1].author !=='bot') { 
-      setAuthor(prevPerson => {
+    const timer = setTimeout( () => {
+      if (messageList.length !==0 && messageList[messageList.length-1].author !=='bot') {
+        const lastAuthor = messageList[messageList.length-1].author; 
+        setMessageList(prevPerson => {
         return [
           ...prevPerson, 
          {author: 'bot', text: `${lastAuthor} ваше сообщение доставлено`} 
@@ -29,9 +24,8 @@ function App(props) {
       })}
     }
       ,1500);
-      setAuthorValue('');
-    setTextValue('');
-    //return () => clearTimeout(timer);
+
+    return () => clearTimeout(timer);
     }, [messageList]);
 
   const handleChangeAuthor = (event) => {
@@ -44,14 +38,16 @@ function App(props) {
 
   const sendMes = (event , props) => {
     event.preventDefault();
-    if (inputAuthor) {
-      setAuthor(prevPerson => {
+    if (valueAuthor) {
+      setMessageList(prevPerson => {
     return [
       ...prevPerson, 
-     {author: inputAuthor.current.value, text: inputText.current.value} 
+     {author: valueAuthor, text: valueText} 
     ]
   });
     }
+    setAuthorValue('');
+    setTextValue('');
     }
     
 
@@ -62,9 +58,9 @@ function App(props) {
 
       <form className='form' onSubmit={sendMes}>
           <label>Имя автора</label>
-          <input ref={inputAuthor} type="text" value={valueAuthor} onChange={handleChangeAuthor} />
+          <input type="text" value={valueAuthor} onChange={handleChangeAuthor} />
           <label>Текст</label>
-          <input ref={inputText} type="text" value={valueText} onChange={handleChangeText} />
+          <input  type="text" value={valueText} onChange={handleChangeText} />
           <input type="submit" value="Отправить" className='btn' />
       </form>
       </header>
