@@ -7,9 +7,8 @@ import {
   useParams,
 } from "react-router";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
-import { addMessageWithThunk } from "../store/messages/actions";
-import { addMessageWithFB } from "../midllewares/middleware";
-import { getAuthorName } from "../store/profile/selectors";
+import { addMessageWithFB, bindChatIdToProfile, bindProfileToChatId } from "../midllewares/middleware";
+import { getAuthorEmail, getAuthorName } from "../store/profile/selectors";
 
 function Chats(props) {
   const useStyles = makeStyles(() => ({
@@ -27,6 +26,7 @@ function Chats(props) {
   const classes = useStyles();
   const [valueText, setTextValue] = useState('');
   const name = useSelector(getAuthorName, shallowEqual);
+  const email = useSelector(getAuthorEmail, shallowEqual);
 
   const handleChangeText = (event) => {
     setTextValue(event.target.value);
@@ -34,8 +34,10 @@ function Chats(props) {
 
   const handleMes = (event) => {
     if (valueText) {
-      const newMes = { author: name, text: valueText };
+      const newMes = { author: name, text: valueText, email: email };
       dispatch(addMessageWithFB(chatId, newMes))
+      dispatch(bindChatIdToProfile(chatId, email))
+      dispatch(bindProfileToChatId(chatId, email))
     }
     setTextValue('');
   }

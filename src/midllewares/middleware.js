@@ -1,7 +1,6 @@
 //import { async } from "@firebase/util"
 //import { addMessage, ADD_MESSAGE } from "../store/messages/actions"
-import { async } from '@firebase/util';
-import { child, equalTo, get, getDatabase, onValue, push, query, ref, remove, set } from 'firebase/database'
+import { child, get, getDatabase, onValue, push, ref, remove, set } from 'firebase/database'
 import firebaseConfig from "../services/firebaseConfig";
 import { chatListUpdate } from "../store/chats/actions";
 import { updateMessages } from '../store/messages/actions';
@@ -56,10 +55,89 @@ export const changeProfileNameWithFB = (name, email) => async (dispatch) => {
     const data = await getProfile.val()
     const objKey = Object.keys(data).find(key => data[key].email === email)
     const profileRef = ref(db, `profile/${objKey}`)
-    set(profileRef, { email: email, name: name }).then((res) => {
+    set(profileRef, { email: email, name: name, chatsId: data[objKey].chatsId || {} }).then((res) => {
         console.log('prifile name changed', res);
     })
     dispatch(updateName(name, email))
+
+    let getChatsId = await get(child(dbRef, `profile/${objKey}/chatsId`))
+    let chatsIdInProfile = await getChatsId.val() || {}
+
+    for (let key in chatsIdInProfile) {
+        let getMessages = await get(child(dbRef, `messages/${chatsIdInProfile[key].chatId}`))
+        let messages = await getMessages.val()
+        for (let keyMes in messages) {
+            if (messages[keyMes].email === email) {
+                messages[keyMes].author = name
+            }
+        }
+        let messagesRef = ref(db, `messages/${chatsIdInProfile[key].chatId}`)
+        set(messagesRef, messages)
+
+    }
+
+}
+
+export const deleteChatWithFB = (id) => async () => {
+    const db = getDatabase(firebaseConfig)
+    const chatRef = ref(db, `chats/${id}`)
+    const messagesRef = ref(db, `messages/${id}`)
+    const dbRef = ref(db);
+    const getChat = await get(child(dbRef, `chats/${id}`))
+    const data = await getChat.val()
+
+    for (let key in data.emails) {
+        let getProfile = await get(child(dbRef, 'profile/'))
+        let data_ = await getProfile.val()
+        let objKey = Object.keys(data_).find(key_ => data_[key_].email === data.emails[key].email)
+        let getChatsId = await get(child(dbRef, `profile/${objKey}/chatsId`))
+        let ChatsIdInProfile = await getChatsId.val() || {}
+        let objKeyChatId = Object.keys(ChatsIdInProfile).find(key => ChatsIdInProfile[key].chatId === id)
+        let chatIbOrofileRef = ref(db, `/profile/${objKey}/chatsId/${objKeyChatId}`)
+        remove(chatIbOrofileRef)
+    }
+
+    remove(chatRef).then((res) => {
+        console.log('Chat Removed', res);
+    })
+    remove(messagesRef).then((res) => {
+        console.log('Messages Removed', res);
+    })
+}
+
+export const bindChatIdToProfile = (chatId, email) => async (dispatch) => {
+    const db = getDatabase(firebaseConfig)
+    const dbRef = ref(db);
+    const getProfile = await get(child(dbRef, 'profile/'))
+    const data = await getProfile.val()
+    const objKey = Object.keys(data).find(key => data[key].email === email)
+    const chatRef = ref(db, `profile/${objKey}/chatsId`)
+    const chatsIdProfile = data[objKey].chatsId || {}
+    if (!(Object.keys(chatsIdProfile).find(key => chatsIdProfile[key].chatId === chatId))) {
+        const newChatRef = push(chatRef)
+        set(newChatRef, {
+            chatId
+        }).then((res) => {
+            console.log('prifile name changed', res);
+        })
+    }
+}
+
+export const bindProfileToChatId = (chatId, email) => async (dispatch) => {
+    const db = getDatabase(firebaseConfig)
+    const dbRef = ref(db);
+    const getChat = await get(child(dbRef, 'chats/'))
+    const data = await getChat.val()
+    const emailRef = ref(db, `chats/${chatId}/emails`)
+    const emails = data[chatId].emails || {}
+    if (!(Object.keys(emails).find(key => emails[key].email === email))) {
+        const newEmailRef = push(emailRef)
+        set(newEmailRef, {
+            email
+        }).then((res) => {
+            console.log('prifile name changed', res);
+        })
+    }
 }
 
 export const addChatWithFB = (name) => async () => {
@@ -71,17 +149,7 @@ export const addChatWithFB = (name) => async () => {
     })
 }
 
-export const deleteChatWithFB = (id) => async () => {
-    const db = getDatabase(firebaseConfig)
-    const chatRef = ref(db, `chats/${id}`)
-    const messagesRef = ref(db, `messages/${id}`)
-    remove(chatRef).then((res) => {
-        console.log('Chat Removed', res);
-    })
-    remove(messagesRef).then((res) => {
-        console.log('Messages Removed', res);
-    })
-}
+
 
 export const addMessageWithFB = (chatId, message) => async () => {
     const db = getDatabase(firebaseConfig)
